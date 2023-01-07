@@ -231,7 +231,9 @@ sarima(dat_ts, 1, 1, 2)
 sarima.for(dat_ts, n.ahead = 10, 1, 1, 1)
 
 
-#Linear models
+################################
+###### Linear Regression #######
+################################
 chn_co2 <- ts(CHN$CO2_emissions)
 chn_gdp <- ts(CHN_gdp$gdp)
 chn_co2_train <- ts(chn_co2[1:25])
@@ -245,14 +247,14 @@ lines(l1$fitted.values,col=2)
 # plot forecast
 plot(forecast(l1,h=7))
 lines(x=25:32, y=chn_co2_test)
-abline(v=26,col='red',lty='dotted')
+abline(v=26,col='red',lty='longdash')
 # summary
 summary(l1)
 AIC(l1)
 dwtest(l1)
 # residuals
 resl1 <- residuals(l1)
-plot(resl1)
+tsdisplay(resl1,lag.max=25)
 # rmse
 
 
@@ -264,16 +266,18 @@ lines(chn_co2_train)
 test_l2 <- list(gdp_train=chn_gdp[26:32])
 plot(forecast(l2,newdata=as.data.frame(test_l2)))
 lines(x=25:32, y=chn_co2_test,col=1)
-abline(v=26,col='red',lty='dotted')
+abline(v=26,col='red',lty='longdash')
 # summary
 summary(l2)
 AIC(l2)
 dwtest(l2)
 # residuals
 resl2 <- residuals(l2)
-plot(resl2)
+tsdisplay(resl2, lag.max=25)
+# rmse
 
 
+<<<<<<< HEAD
 ## BASS MODELS ##
 
 ###we estimate a simple Bass Model 
@@ -372,30 +376,45 @@ fit_GGMtw_inst<- make.instantaneous(fit_GGMtw)
 
 
 ## GAM ##
+=======
+#################################
+## Generalized Additive Models ##
+#################################
+>>>>>>> bda5b9432c2aa750d4d042a96d0c4ab813b19b98
 library(gam)
 
 tt <- (1:length(chn_co2_train))
 g1 <- gam(chn_co2_train~lo(tt))
-summary(g1)
-plot(g1,se=T)
-tsdisplay(residuals(g1))
-
+# plot forecast
 test_g1 <- list(tt=1:32)
-plot(chn_co2)
-lines(predict(g1, newdata=test_g1),col=2)
+plot(predict(g1, newdata=test_g1),col='blue',type='l')
+lines(chn_co2)
+abline(v=26,col='red',lty='longdash')
+# residuals
+plot(g1,se=T)
+tsdisplay(residuals(g1),lag.max=25)
+# summary
+summary(g1)
+# rmse
 
-g2 <- gam(chn_co2_train~lo(tt)+lo(gdp_train), control=gam.control(maxit=200,bf.maxit=200))
+
+g2 <- gam(chn_co2_train~lo(tt)+lo(gdp_train),
+          control=gam.control(maxit=200,bf.maxit=200))
 summary(g2)
 plot(g2,se=T)
 tsdisplay(residuals(g2))
 
+# plot forecast
 test_g2 <- list(tt=1:32, gdp_train=chn_gdp)
-plot(predict(g2, newdata=test_g2),col=3,type='l')
+plot(predict(g2, newdata=test_g2),col='blue',type='l')
 lines(chn_co2)
-lines(predict(g1, newdata=test_g1),col=2)
-
-lines(g1$fitted.values, type='l',col=2)
-lines(g2$fitted.values, type='l',col=3)
+abline(v=26,col='red',lty='longdash')
+# residuals
+par(mfrow=c(2,1))
+plot(g2,se=T)
+tsdisplay(residuals(g2),lag.max=25)
+# summary
+summary(g2)
 
 
 ################################
