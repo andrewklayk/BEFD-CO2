@@ -270,3 +270,180 @@ lines(predict(g1, newdata=test_g1),col=2)
 
 lines(g1$fitted.values, type='l',col=2)
 lines(g2$fitted.values, type='l',col=3)
+
+
+################################
+###### Gradient Boosting #######
+################################
+# Set train and test
+set.seed(1)
+train = sample (1:nrow(DEU), 0.7*nrow(DEU))
+data.train=DEU[train ,]
+data.test=DEU[-train ,]
+
+# make some variables factor
+##data.train[,c(3,7, 10:24)]= lapply(data.train[,c(3,7, 10:24)],factor)
+##data.test[,c(3,7, 10:24)]= lapply(data.test[,c(3,7, 10:24)],factor)
+
+str(data.train)
+
+library (gbm)
+
+?gbm
+
+# 1 Boosting- 
+boost.CO2 = gbm(CO2_emissions ~ Year, data=data.train, 
+                distribution="gaussian", n.trees=500, interaction.depth=1, bag.fraction = 2)
+boost.CO2
+#
+#for the plot
+par(mfrow=c(1,1))
+#
+#plot of training error
+plot(boost.CO2$train.error, type="l", ylab="training error")
+
+#always decreasing with increasing number of trees
+#
+#
+#relative influence plot
+summary(boost.CO2) 
+#let us modify the graphical parameters to obtain a better plot
+#
+#more space on the left
+#
+# default vector of parameters
+mai.old<-par()$mai
+mai.old
+#new vector
+mai.new<-mai.old
+#new space on the left
+mai.new[2] <- 2.5 
+mai.new
+#modify graphical parameters
+par(mai=mai.new)
+summary(boost.CO2, las=1) 
+#las=1 horizontal names on y
+summary(boost.CO2, las=1, cBar=10) 
+#cBar defines how many variables
+#back to orginal window
+par(mai=mai.old)
+
+
+
+# test set prediction for every tree (1:5000)
+
+
+yhat.boost=predict(boost.CO2, newdata=data.test, n.trees=1:100)
+
+# calculate the error for each iteration
+#use 'apply' to perform a 'cycle for' 
+# the first element is the matrix we want to use, 2 means 'by column', 
+#and the third element indicates the function we want to calculate
+
+err = apply(yhat.boost, 2, function(pred) mean((data.test$CO2_emissions - pred)^2))
+#
+plot(err, type="l")
+
+# error comparison (train and test)
+plot(boost.CO2$train.error, type="l")
+lines(err, type="l", col=2)
+#minimum error in test set
+best=which.min(err)
+abline(v=best, lty=2, col=4)
+#
+min(err) #minimum error
+
+
+# 2 Boosting - Deeper trees
+boost.CO2 = gbm(CO2_emissions ~ Year, data=data.train, 
+                distribution="gaussian", n.trees=500, interaction.depth=4, bag.fraction = 2)
+
+plot(boost.CO2$train.error, type="l")
+
+#par(mai=mai.new)
+
+summary(boost.movies, las=1, cBar=10)  
+
+#par(mai=mai.old)
+
+yhat.boost=predict(boost.movies ,newdata=data.test,n.trees=1:500)
+err = apply(yhat.boost,2,function(pred) mean((data.test$CO2_emissions-pred)^2))
+plot(err, type="l")
+
+
+plot(boost.CO2$train.error, type="l")
+lines(err, type="l", col=2)
+best=which.min(err)
+abline(v=best, lty=2, col=4)
+min(err) #0.1174786
+
+
+# 3 Boosting - Smaller learning rate 
+
+boost.CO2 = gbm(CO2_emissions ~ Year, data=data.train, 
+                distribution="gaussian", n.trees=500, interaction.depth=1, shrinkage=0.01, bag.fraction = 2)
+plot(boost.CO2$train.error, type="l")
+
+par(mai=mai.new)
+
+summary(boost.CO2, las=1, cBar=10) 
+par(mai=mai.old)
+
+yhat.boost=predict(boost.CO2 ,newdata=data.test,n.trees=1:500)
+err = apply(yhat.boost,2,function(pred) mean((data.test$CO2_emissions-pred)^2))
+plot(err, type="l")
+
+
+plot(boost.CO2$train.error, type="l")
+lines(err, type="l", col=2)
+best=which.min(err)
+abline(v=best, lty=2, col=4)
+min(err) #0.1174786
+
+
+# 4 Boosting - combination of previous models
+boost.CO2 = gbm(CO2_emissions ~ Year ,data=data.train, 
+                distribution="gaussian",n.trees=500, interaction.depth=4, shrinkage=0.01, bag.fraction = 2)
+
+plot(boost.CO2$train.error, type="l")
+#
+
+par(mai=mai.new)
+
+summary(boost.CO2, las=1, cBar=10) 
+
+par(mai=mai.old)
+
+
+err = apply(yhat.boost, 2, function(pred) mean((data.test$CO2_emissions-pred)^2))
+plot(err, type="l")
+
+
+plot(boost.CO2$train.error, type="l")
+lines(err, type="l", col=2)
+best=which.min(err)
+abline(v=best, lty=2, col=4)
+err.boost= min(err)
+
+
+##Comparison of models in terms of residual deviance
+dev.gbm<- (sum((yhat.boost-data.test$CO2_emissions)^2))
+dev.gbm  ##653.5258
+dev.gam
+dev.lm
+
+
+
+boost.CO2
+# partial dependence plots
+plot(boost.CO2, i.var=1, n.trees = best)
+plot(boost.CO2, i.var=2, n.trees = best)
+plot(boost.CO2, i.var=5, n.trees = best)
+plot(boost.CO2, i.var=c(1,5), n.trees = best) #bivariate (library(viridis) may be necessary)
+#
+plot(boost.CO2, i.var=3, n.trees = best) # categorical
+plot(boost.CO2, i.var=6, n.trees = best)
+
+plot(boost.CO2, i=23, n.trees = best)# categorical
+plot(boost.CO2, i=17, n.trees = best) #no effect
+
