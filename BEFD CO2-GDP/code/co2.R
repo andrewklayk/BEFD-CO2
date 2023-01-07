@@ -437,7 +437,7 @@ library (gbm)
 ?gbm
 
 # 1 Boosting- 
-boost.CO2 = gbm(CO2_emissions ~ Year, data=data.train, 
+boost.CO2 = gbm(chn_co2_train ~ tt, data=chn_co2_train, 
                 distribution="gaussian", n.trees=500, interaction.depth=1, bag.fraction = 2)
 boost.CO2
 #
