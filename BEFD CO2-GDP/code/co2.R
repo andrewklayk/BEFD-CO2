@@ -31,6 +31,8 @@ library(rugarch)
 library(prophet)
 library(tsfknn)
 library(astsa)
+library(lmtest)
+library(DIMORA)
 
 
 data = read.csv("../datasets/BEFD_CO2_DATA_prp.csv")
@@ -270,6 +272,103 @@ dwtest(l2)
 # residuals
 resl2 <- residuals(l2)
 plot(resl2)
+
+
+## BASS MODELS ##
+
+###we estimate a simple Bass Model 
+acf(chn_co2)
+bm_cass<-BM(chn_co2,display = T)
+summary(bm_cass)
+
+###prediction (out-of-sample)
+pred_bmcas<- predict(bm_cass, newx=c(1:50))
+pred.instcas<- make.instantaneous(pred_bmcas)
+
+###plot of fitted model 
+plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
+axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
+lines(pred.instcas, lwd=2, col=2)
+
+
+###we estimate the model with 50% of the data
+
+bm_cass50<-BM(chn_co2[1:18],display = T)
+summary(bm_cass50)
+
+pred_bmcas50<- predict(bm_cass50, newx=c(1:50))
+pred.instcas50<- make.instantaneous(pred_bmcas50)
+
+plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
+axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
+lines(pred.instcas50, lwd=2, col=2)
+
+
+###we estimate the model with 25% of the data
+bm_cass75<-BM(chn_co2[1:9],display = T)
+summary(bm_cass75)
+
+pred_bmcas75<- predict(bm_cass75, newx=c(1:50))
+pred.instcas75<- make.instantaneous(pred_bmcas75)
+
+
+###Comparison between models (instantaneous)
+###instantaneous
+plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
+axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
+lines(pred.instcas75, lwd=2, col=2)
+lines(pred.instcas50, lwd=2, col=3)
+lines(pred.instcas, lwd=2, col=4)
+
+
+###Comparison between models (cumulative)
+plot(cumsum(chn_co2), type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
+axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
+lines(pred_bmcas75, lwd=2, col=2)
+lines(pred_bmcas50, lwd=2, col=3)
+lines(pred_bmcas, lwd=2, col=4)
+
+
+
+
+
+
+###GBMr1
+GBMr1tw<- GBM(chn_co2,shock = "rett",nshock = 1,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02 , 24,38,-0.1))
+
+
+######GBMe1
+
+GBMe1tw<- GBM(chn_co2,shock = "exp",nshock = 1,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02, 12,-0.1,0.1))
+summary(GBMe1tw)
+
+pred_GBMe1tw<- predict(GBMe1tw, newx=c(1:60))
+pred_GBMe1tw.inst<- make.instantaneous(pred_GBMe1tw)
+
+plot(chn_co2, type= "b",xlab="Year", ylab="CO2 emissions",  pch=16, lty=3, cex=0.6, xlim=c(1,60))
+lines(pred_GBMe1tw.inst, lwd=2, col=2)
+
+
+######GGM 
+GGM_tw<- GGM(chn_co2, prelimestimates=c(3.625255e+02, 0.001, 0.01, 4.028274e-03, 8.484603e-02))
+summary(GGM_tw)
+
+pred_GGM_tw<- predict(GGM_tw, newx=c(1:60))
+pred_GGM_tw.inst<- make.instantaneous(pred_GGM_tw)
+
+plot(chn_co2, type= "b",xlab="Quarter", ylab="Quarterly revenues",  pch=16, lty=3, cex=0.6, xlim=c(1,60))
+lines(pred_GGM_tw.inst, lwd=2, col=2)
+#lines(pred.insttw, lwd=2, col=3)
+
+###Analysis of residuals
+res_GGMtw<- residuals(GGM_tw)
+acf<- acf(residuals(GGM_tw))
+
+
+fit_GGMtw<- fitted(GGM_tw)
+fit_GGMtw_inst<- make.instantaneous(fit_GGMtw)
+
+
 
 
 ## GAM ##
