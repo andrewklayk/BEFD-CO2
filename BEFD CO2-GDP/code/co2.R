@@ -206,7 +206,7 @@ a2 <- auto.arima(dlrGDP, seasonal = TRUE, stationary = TRUE, stepwise = FALSE, i
 a2
 
 arma22 <- Arima(dlrGDP, order=c(0, 0, 1))
-plot.Arima(arma22)
+plot(arma22)
 tsdiag(arma22, gof.lag=36)
 
 arma22.f <- forecast(arma22, length(dlrGDP))
@@ -230,42 +230,69 @@ sarima.for(dat_ts, n.ahead = 10, 1, 1, 1)
 
 
 #Linear models
-co2 <- ts(CHN$CO2_emissions)
-gdp <- ts(CHN_gdp$gdp)
-co2_train <- ts(co2[1:25])
-gdp_train <- ts(gdp[1:25])
+chn_co2 <- ts(CHN$CO2_emissions)
+chn_gdp <- ts(CHN_gdp$gdp)
+chn_co2_train <- ts(chn_co2[1:25])
+chn_co2_test <- ts(chn_co2[25:32])
+gdp_train <- ts(chn_gdp[1:25])
 
-l1 <- tslm(co2_train~trend)
+l1 <- tslm(chn_co2_train~trend)
+# plot the fitted model
+plot(chn_co2_train)
+lines(l1$fitted.values,col=2)
+# plot forecast
 plot(forecast(l1,h=7))
+lines(x=25:32, y=chn_co2_test)
+abline(v=26,col='red',lty='dotted')
+# summary
 summary(l1)
 AIC(l1)
+dwtest(l1)
+# residuals
+resl1 <- residuals(l1)
+plot(resl1)
+# rmse
 
-l2 <- tslm(co2~trend+gdp)
-plot(forecast(l1,h=7))
+
+l2 <- tslm(chn_co2_train~trend+gdp_train)
+# plot the fitted model
+plot(l2$fitted.values,col=2)
+lines(chn_co2_train)
+# plot the forecast
+test_l2 <- list(gdp_train=chn_gdp[26:32])
+plot(forecast(l2,newdata=as.data.frame(test_l2)))
+lines(x=25:32, y=chn_co2_test,col=1)
+abline(v=26,col='red',lty='dotted')
+# summary
 summary(l2)
 AIC(l2)
+dwtest(l2)
+# residuals
+resl2 <- residuals(l2)
+plot(resl2)
+
 
 ## GAM ##
 library(gam)
 
-tt <- (1:length(co2_train))
-g1 <- gam(co2_train~lo(tt))
+tt <- (1:length(chn_co2_train))
+g1 <- gam(chn_co2_train~lo(tt))
 summary(g1)
 plot(g1,se=T)
 tsdisplay(residuals(g1))
 
 test_g1 <- list(tt=1:32)
-plot(co2)
+plot(chn_co2)
 lines(predict(g1, newdata=test_g1),col=2)
 
-g2 <- gam(co2_train~lo(tt)+lo(gdp_train), control=gam.control(maxit=200,bf.maxit=200))
+g2 <- gam(chn_co2_train~lo(tt)+lo(gdp_train), control=gam.control(maxit=200,bf.maxit=200))
 summary(g2)
 plot(g2,se=T)
 tsdisplay(residuals(g2))
 
-test_g2 <- list(tt=1:32, gdp_train=gdp)
+test_g2 <- list(tt=1:32, gdp_train=chn_gdp)
 plot(predict(g2, newdata=test_g2),col=3,type='l')
-lines(co2)
+lines(chn_co2)
 lines(predict(g1, newdata=test_g1),col=2)
 
 lines(g1$fitted.values, type='l',col=2)
@@ -392,7 +419,6 @@ par(mai=mai.old)
 yhat.boost=predict(boost.CO2 ,newdata=data.test,n.trees=1:500)
 err = apply(yhat.boost,2,function(pred) mean((data.test$CO2_emissions-pred)^2))
 plot(err, type="l")
-
 
 plot(boost.CO2$train.error, type="l")
 lines(err, type="l", col=2)
