@@ -1,6 +1,7 @@
 library(chron)
 require(RColorBrewer)
 library(purrr)
+library(gbm)
 library(car)
 library(MASS)
 library(leaps)
@@ -277,7 +278,6 @@ tsdisplay(resl2, lag.max=25)
 # rmse
 
 
-<<<<<<< HEAD
 ## BASS MODELS ##
 
 ###we estimate a simple Bass Model 
@@ -291,12 +291,9 @@ pred.instcas<- make.instantaneous(pred_bmcas)
 
 ###plot of fitted model 
 plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
-axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
 lines(pred.instcas, lwd=2, col=2)
 
-
 ###we estimate the model with 50% of the data
-
 bm_cass50<-BM(chn_co2[1:18],display = T)
 summary(bm_cass50)
 
@@ -304,9 +301,7 @@ pred_bmcas50<- predict(bm_cass50, newx=c(1:50))
 pred.instcas50<- make.instantaneous(pred_bmcas50)
 
 plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
-axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
 lines(pred.instcas50, lwd=2, col=2)
-
 
 ###we estimate the model with 25% of the data
 bm_cass75<-BM(chn_co2[1:9],display = T)
@@ -315,35 +310,24 @@ summary(bm_cass75)
 pred_bmcas75<- predict(bm_cass75, newx=c(1:50))
 pred.instcas75<- make.instantaneous(pred_bmcas75)
 
-
 ###Comparison between models (instantaneous)
 ###instantaneous
 plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
-axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
 lines(pred.instcas75, lwd=2, col=2)
 lines(pred.instcas50, lwd=2, col=3)
 lines(pred.instcas, lwd=2, col=4)
 
-
 ###Comparison between models (cumulative)
 plot(cumsum(chn_co2), type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
-axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
 lines(pred_bmcas75, lwd=2, col=2)
 lines(pred_bmcas50, lwd=2, col=3)
 lines(pred_bmcas, lwd=2, col=4)
 
-
-
-
-
-
 ###GBMr1
-GBMr1tw<- GBM(chn_co2,shock = "rett",nshock = 1,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02 , 24,38,-0.1))
+GBMr1tw<- GBM(chn_co2,shock = "rett",nshock = 2,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02 , 24,38,-0.1))
 
-
-######GBMe1
-
-GBMe1tw<- GBM(chn_co2,shock = "exp",nshock = 1,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02, 12,-0.1,0.1))
+###GBMe1
+GBMe1tw<- GBM(chn_co2,shock = "exp",nshock = 2,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02, 12,-0.1,0.1))
 summary(GBMe1tw)
 
 pred_GBMe1tw<- predict(GBMe1tw, newx=c(1:60))
@@ -351,7 +335,6 @@ pred_GBMe1tw.inst<- make.instantaneous(pred_GBMe1tw)
 
 plot(chn_co2, type= "b",xlab="Year", ylab="CO2 emissions",  pch=16, lty=3, cex=0.6, xlim=c(1,60))
 lines(pred_GBMe1tw.inst, lwd=2, col=2)
-
 
 ######GGM 
 GGM_tw<- GGM(chn_co2, prelimestimates=c(3.625255e+02, 0.001, 0.01, 4.028274e-03, 8.484603e-02))
@@ -368,19 +351,14 @@ lines(pred_GGM_tw.inst, lwd=2, col=2)
 res_GGMtw<- residuals(GGM_tw)
 acf<- acf(residuals(GGM_tw))
 
-
 fit_GGMtw<- fitted(GGM_tw)
 fit_GGMtw_inst<- make.instantaneous(fit_GGMtw)
 
 
 
-
-## GAM ##
-=======
 #################################
 ## Generalized Additive Models ##
 #################################
->>>>>>> bda5b9432c2aa750d4d042a96d0c4ab813b19b98
 library(gam)
 
 tt <- (1:length(chn_co2_train))
@@ -422,172 +400,94 @@ summary(g2)
 ################################
 # Set train and test
 set.seed(1)
-train = sample (1:nrow(DEU), 0.7*nrow(DEU))
-data.train=DEU[train ,]
-data.test=DEU[-train ,]
+dataset <- CHN
+train = sample (1:nrow(dataset), 0.7*nrow(dataset))
+deu_co2_train=dataset[train ,]
+deu_co2_test=dataset[-train ,]
 
-# make some variables factor
-##data.train[,c(3,7, 10:24)]= lapply(data.train[,c(3,7, 10:24)],factor)
-##data.test[,c(3,7, 10:24)]= lapply(data.test[,c(3,7, 10:24)],factor)
+# 1 Boosting
+tt <- 1:length(deu_co2_train)
+boost.CO2 = gbm(CO2_emissions ~ Year, data=deu_co2_train, 
+                distribution="gaussian", n.trees=500,
+                interaction.depth=1, bag.fraction = 2)
 
-str(data.train)
-
-library (gbm)
-
-?gbm
-
-# 1 Boosting- 
-boost.CO2 = gbm(chn_co2_train ~ tt, data=chn_co2_train, 
-                distribution="gaussian", n.trees=500, interaction.depth=1, bag.fraction = 2)
-boost.CO2
-#
-#for the plot
-par(mfrow=c(1,1))
-#
-#plot of training error
+# plot training error
 plot(boost.CO2$train.error, type="l", ylab="training error")
-
-#always decreasing with increasing number of trees
-#
-#
-#relative influence plot
-summary(boost.CO2) 
-#let us modify the graphical parameters to obtain a better plot
-#
-#more space on the left
-#
-# default vector of parameters
-mai.old<-par()$mai
-mai.old
-#new vector
-mai.new<-mai.old
-#new space on the left
-mai.new[2] <- 2.5 
-mai.new
-#modify graphical parameters
-par(mai=mai.new)
-summary(boost.CO2, las=1) 
-#las=1 horizontal names on y
-summary(boost.CO2, las=1, cBar=10) 
-#cBar defines how many variables
-#back to orginal window
-par(mai=mai.old)
-
-
-
-# test set prediction for every tree (1:5000)
-
-
-yhat.boost=predict(boost.CO2, newdata=data.test, n.trees=1:100)
-
-# calculate the error for each iteration
-#use 'apply' to perform a 'cycle for' 
-# the first element is the matrix we want to use, 2 means 'by column', 
-#and the third element indicates the function we want to calculate
-
-err = apply(yhat.boost, 2, function(pred) mean((data.test$CO2_emissions - pred)^2))
-#
-plot(err, type="l")
+# predict and get test error
+yhat.boost=predict(boost.CO2, newdata=deu_co2_test, n.trees=1:500)
+err = apply(yhat.boost, 2, function(pred) mean((deu_co2_test$CO2_emissions - pred)^2))
 
 # error comparison (train and test)
-plot(boost.CO2$train.error, type="l")
-lines(err, type="l", col=2)
-#minimum error in test set
+plot(boost.CO2$train.error, type="l",
+     ylim=c(min(c(boost.CO2$train.error, err)),max(c(boost.CO2$train.error, err))))
+lines(err, type='l', col=2)
 best=which.min(err)
+abline(h=min(err),lty=2, col=4)
 abline(v=best, lty=2, col=4)
-#
-min(err) #minimum error
-
+min(err) #0.09 / 0.21
 
 # 2 Boosting - Deeper trees
-boost.CO2 = gbm(CO2_emissions ~ Year, data=data.train, 
-                distribution="gaussian", n.trees=500, interaction.depth=4, bag.fraction = 2)
+boost.CO2 = gbm(CO2_emissions ~ Year, data=as.data.frame(deu_co2_train), 
+                distribution="gaussian",
+                n.trees=500, interaction.depth=4, bag.fraction = 2)
 
-plot(boost.CO2$train.error, type="l")
-
-#par(mai=mai.new)
-
-summary(boost.movies, las=1, cBar=10)  
-
-#par(mai=mai.old)
-
-yhat.boost=predict(boost.movies ,newdata=data.test,n.trees=1:500)
-err = apply(yhat.boost,2,function(pred) mean((data.test$CO2_emissions-pred)^2))
-plot(err, type="l")
-
-
-plot(boost.CO2$train.error, type="l")
+# predict and get test error
+yhat.boost=predict(boost.CO2 ,newdata=deu_co2_test,n.trees=1:500)
+err = apply(yhat.boost,2,function(pred) mean((deu_co2_test$CO2_emissions-pred)^2))
+# error comparison
+plot(boost.CO2$train.error, type="l",
+     ylim=c(min(c(boost.CO2$train.error, err)),max(c(boost.CO2$train.error, err))))
 lines(err, type="l", col=2)
 best=which.min(err)
 abline(v=best, lty=2, col=4)
-min(err) #0.1174786
+abline(h=min(err), lty=2, col=4)
+min(err) #0.08 / 0.2
 
 
 # 3 Boosting - Smaller learning rate 
+boost.CO2 = gbm(CO2_emissions ~ Year, data=deu_co2_train, 
+                distribution="gaussian", n.trees=500,
+                interaction.depth=1, shrinkage=0.01, bag.fraction = 2)
+# predict and get test error
+yhat.boost=predict(boost.CO2 ,newdata=deu_co2_test,n.trees=1:500)
+err = apply(yhat.boost,2, function(pred) mean((deu_co2_test$CO2_emissions-pred)^2))
 
-boost.CO2 = gbm(CO2_emissions ~ Year, data=data.train, 
-                distribution="gaussian", n.trees=500, interaction.depth=1, shrinkage=0.01, bag.fraction = 2)
-plot(boost.CO2$train.error, type="l")
-
-par(mai=mai.new)
-
-summary(boost.CO2, las=1, cBar=10) 
-par(mai=mai.old)
-
-yhat.boost=predict(boost.CO2 ,newdata=data.test,n.trees=1:500)
-err = apply(yhat.boost,2,function(pred) mean((data.test$CO2_emissions-pred)^2))
-plot(err, type="l")
-
-plot(boost.CO2$train.error, type="l")
+# error comparison
+plot(boost.CO2$train.error, type="l",ylim=c(0:1))
 lines(err, type="l", col=2)
 best=which.min(err)
 abline(v=best, lty=2, col=4)
-min(err) #0.1174786
-
+abline(h=min(err), lty=2, col=4)
+min(err) # 0.09/ 0.22
 
 # 4 Boosting - combination of previous models
-boost.CO2 = gbm(CO2_emissions ~ Year ,data=data.train, 
+boost.CO2 = gbm(CO2_emissions ~ Year ,data=deu_co2_train, 
                 distribution="gaussian",n.trees=500, interaction.depth=4, shrinkage=0.01, bag.fraction = 2)
 
-plot(boost.CO2$train.error, type="l")
-#
+# predict and get test error
+yhat.boost=predict(boost.CO2 ,newdata=deu_co2_test,n.trees=1:500)
+err = apply(yhat.boost,2, function(pred) mean((deu_co2_test$CO2_emissions-pred)^2))
 
-par(mai=mai.new)
-
-summary(boost.CO2, las=1, cBar=10) 
-
-par(mai=mai.old)
-
-
-err = apply(yhat.boost, 2, function(pred) mean((data.test$CO2_emissions-pred)^2))
-plot(err, type="l")
-
-
-plot(boost.CO2$train.error, type="l")
+# error comparison
+plot(boost.CO2$train.error, type="l",ylim=c(0:1))
 lines(err, type="l", col=2)
 best=which.min(err)
 abline(v=best, lty=2, col=4)
-err.boost= min(err)
+abline(h=min(err), lty=2, col=4)
+min(err) # 0.08 / 0.2
 
+# plot boost forecast
 
+future.preds <- predict(boost.CO2, newdata=list(Year=2021:2030), n.trees=1:500)
+
+end.year <- 2030
+plot(x=deu_co2_train$Year, y=deu_co2_train$CO2_emissions,
+     xlim=c(min(dataset$Year), end.year))
+for(year in deu_co2_test$Year){
+  points(x=year, y=dataset$CO2_emissions[dataset$Year == year],col='red')
+}
+points(x=deu_co2_test$Year, y=rowMeans(yhat.boost),col='blue')
+points(x=list(Year=2021:2030), y=rowMeans(future.preds))
 ##Comparison of models in terms of residual deviance
-dev.gbm<- (sum((yhat.boost-data.test$CO2_emissions)^2))
-dev.gbm  ##653.5258
-dev.gam
-dev.lm
-
-
-
-boost.CO2
-# partial dependence plots
-plot(boost.CO2, i.var=1, n.trees = best)
-plot(boost.CO2, i.var=2, n.trees = best)
-plot(boost.CO2, i.var=5, n.trees = best)
-plot(boost.CO2, i.var=c(1,5), n.trees = best) #bivariate (library(viridis) may be necessary)
-#
-plot(boost.CO2, i.var=3, n.trees = best) # categorical
-plot(boost.CO2, i.var=6, n.trees = best)
-
-plot(boost.CO2, i=23, n.trees = best)# categorical
-plot(boost.CO2, i=17, n.trees = best) #no effect
-
+dev.gbm<- (sum((yhat.boost-deu_co2_test$CO2_emissions)^2))
+dev.gbm  ##910.3061
