@@ -277,7 +277,7 @@ tsdisplay(resl2, lag.max=25)
 # rmse
 
 
-<<<<<<< HEAD
+
 ## BASS MODELS ##
 
 ###we estimate a simple Bass Model 
@@ -331,10 +331,6 @@ axis(1, at=c(1,10,19,28,37), labels=music$year[c(1,10,19,28,37)])
 lines(pred_bmcas75, lwd=2, col=2)
 lines(pred_bmcas50, lwd=2, col=3)
 lines(pred_bmcas, lwd=2, col=4)
-
-
-
-
 
 
 ###GBMr1
