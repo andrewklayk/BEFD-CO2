@@ -235,19 +235,23 @@ sarima.for(dat_ts, n.ahead = 10, 1, 1, 1)
 ################################
 ###### Linear Regression #######
 ################################
-chn_co2 <- ts(CHN$CO2_emissions)
-chn_gdp <- ts(CHN_gdp$gdp)
-chn_co2_train <- ts(chn_co2[1:25])
-chn_co2_test <- ts(chn_co2[25:32])
-gdp_train <- ts(chn_gdp[1:25])
 
-l1 <- tslm(chn_co2_train~trend)
+dataset <- CHN
+dataset_gdp <- CHN_gdp
+
+co2 <- ts(dataset$CO2_emissions)
+gdp <- ts(dataset_gdp$gdp)
+co2_train <- ts(co2[1:25])
+co2_test <- ts(co2[25:32])
+gdp_train <- ts(gdp[1:25])
+
+l1 <- tslm(co2_train~trend)
 # plot the fitted model
-plot(chn_co2_train)
+plot(co2_train)
 lines(l1$fitted.values,col=2)
 # plot forecast
 plot(forecast(l1,h=7))
-lines(x=25:32, y=chn_co2_test)
+lines(x=25:32, y=co2_test)
 abline(v=26,col='red',lty='longdash')
 # summary
 summary(l1)
@@ -259,14 +263,14 @@ tsdisplay(resl1,lag.max=25)
 # rmse
 
 
-l2 <- tslm(chn_co2_train~trend+gdp_train)
+l2 <- tslm(co2_train~trend+gdp_train)
 # plot the fitted model
 plot(l2$fitted.values,col=2)
-lines(chn_co2_train)
+lines(co2_train)
 # plot the forecast
-test_l2 <- list(gdp_train=chn_gdp[26:32])
+test_l2 <- list(gdp_train=gdp[26:32])
 plot(forecast(l2,newdata=as.data.frame(test_l2)))
-lines(x=25:32, y=chn_co2_test,col=1)
+lines(x=25:32, y=co2_test,col=1)
 abline(v=26,col='red',lty='longdash')
 # summary
 summary(l2)
@@ -362,12 +366,21 @@ fit_GGMtw_inst<- make.instantaneous(fit_GGMtw)
 #################################
 library(gam)
 
-tt <- (1:length(chn_co2_train))
-g1 <- gam(chn_co2_train~lo(tt))
+dataset <- DEU
+dataset_gdp <- DEU_gdp
+
+co2 <- ts(dataset$CO2_emissions)
+gdp <- ts(dataset_gdp$gdp)
+co2_train <- ts(co2[1:25])
+co2_test <- ts(co2[25:32])
+gdp_train <- ts(gdp[1:25])
+
+tt <- (1:length(co2_train))
+g1 <- gam(co2_train~lo(tt))
 # plot forecast
 test_g1 <- list(tt=1:32)
 plot(predict(g1, newdata=test_g1),col='blue',type='l')
-lines(chn_co2)
+lines(co2)
 abline(v=26,col='red',lty='longdash')
 # residuals
 plot(g1,se=T)
@@ -377,16 +390,13 @@ summary(g1)
 # rmse
 
 
-g2 <- gam(chn_co2_train~lo(tt)+lo(gdp_train),
+g2 <- gam(co2_train~lo(tt)+lo(gdp_train),
           control=gam.control(maxit=200,bf.maxit=200))
-summary(g2)
-plot(g2,se=T)
-tsdisplay(residuals(g2))
 
 # plot forecast
-test_g2 <- list(tt=1:32, gdp_train=chn_gdp)
+test_g2 <- list(tt=1:32, gdp_train=gdp)
 plot(predict(g2, newdata=test_g2),col='blue',type='l')
-lines(chn_co2)
+lines(co2)
 abline(v=26,col='red',lty='longdash')
 # residuals
 par(mfrow=c(2,1))
