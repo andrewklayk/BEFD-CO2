@@ -323,10 +323,7 @@ lines(pred_bmcas75, lwd=2, col=2)
 lines(pred_bmcas50, lwd=2, col=3)
 lines(pred_bmcas, lwd=2, col=4)
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 37a5e56f7ac36e92eea0750bf3877c7b83c89d9c
 ###GBMr1
 GBMr1tw<- GBM(chn_co2,shock = "rett",nshock = 2,prelimestimates = c(3.625255e+02, 4.028274e-03, 8.484603e-02 , 24,38,-0.1))
 
