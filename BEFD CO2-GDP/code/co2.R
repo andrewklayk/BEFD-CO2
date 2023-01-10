@@ -236,29 +236,60 @@ sarima.for(dat_ts, n.ahead = 10, 1, 1, 1)
 ###### Linear Regression #######
 ################################
 
-
-total.gdp <- read.csv("C:/Users/xps/Downloads/DP_LIVE_10012023123919585.csv")
-total.pop <- read.csv('../datasets/un_population.csv')
-total.co2 <- read.csv("../datasets/co2_by_country.csv")
-
-dataset <- total.co2[
-  total.co2$Entity == 'Germany' & total.co2$Year >= 1990,
-  ]$Annual.CO..emissions
-
-dataset_gdp <- total.gdp[
-  gdp.oecd$LOCATION == 'DEU' & gdp.oecd$TIME <= 2030,]$Value
-
-dataset_pop <- c()
-dataset_pop[1:32] <- total.pop[
-  total.pop$Year >= 1990 & total.pop$Year <= 2021 & total.pop$Entity == 'Germany',
+get_pop <- function(ctry){
+  dataset_pop <- c()
+  dataset_pop[1:32] <- total.pop[
+    total.pop$Year >= 1990 & total.pop$Year <= 2021 & total.pop$Entity == ctry,
   ]$Population...Sex..all...Age..all...Variant..estimates
-dataset_pop[33:41] <- total.pop[
-  total.pop$Year >= 2022 & total.pop$Year <= 2030 & total.pop$Entity == 'Germany',
-]$Population...Sex..all...Age..all...Variant..medium
+  dataset_pop[33:41] <- total.pop[
+    total.pop$Year >= 2022 & total.pop$Year <= 2030 & total.pop$Entity == ctry,
+  ]$Population...Sex..all...Age..all...Variant..medium
+  
+  return(dataset_pop)
+}
 
-co2 <- ts(dataset)
-gdp <- ts(dataset_gdp)
-pop <- ts(dataset_pop)
+# GET CO2
+
+spa_co2 <- total.co2[total.co2$Entity == 'Spain' & total.co2$Year >= 1990,]$Annual.CO..emissions
+ger_co2 <- total.co2[total.co2$Entity == 'Germany' & total.co2$Year >= 1990,]$Annual.CO..emissions
+pol_co2 <- total.co2[total.co2$Entity == 'Poland' & total.co2$Year >= 1990,]$Annual.CO..emissions
+fra_co2 <- total.co2[total.co2$Entity == 'France' & total.co2$Year >= 1990,]$Annual.CO..emissions
+ita_co2 <- total.co2[total.co2$Entity == 'Italy' & total.co2$Year >= 1990,]$Annual.CO..emissions
+
+eu_co2 <- spa_co2 + ger_co2 + fra_co2 + ita_co2
+chn_co2 <- total.co2[
+  total.co2$Entity == 'China' & total.co2$Year >= 1990,]$Annual.CO..emissions
+
+# GET GDP
+
+spa_gdp <- total.gdp[total.gdp$LOCATION == 'ESP' & total.gdp$TIME >= 1990 & total.gdp$TIME<=2030,]$Value
+ger_gdp <- total.gdp[total.gdp$LOCATION == 'DEU' & total.gdp$TIME >= 1990 & total.gdp$TIME<=2030,]$Value
+pol_gdp <- total.gdp[total.gdp$LOCATION == 'POL' & total.gdp$TIME >= 1990 & total.gdp$TIME<=2030,]$Value
+fra_gdp <- total.gdp[total.gdp$LOCATION == 'FRA' & total.gdp$TIME >= 1990 & total.gdp$TIME<=2030,]$Value
+ita_gdp <- total.gdp[total.gdp$LOCATION == 'ITA' & total.gdp$TIME >= 1990 & total.gdp$TIME<=2030,]$Value
+
+eu_gdp <- ger_gdp + ita_gdp + fra_gdp + spa_gdp
+chn_gdp <- total.gdp[
+  total.gdp$LOCATION == 'CHN' & total.gdp$TIME <= 2030,]$Value
+
+# GET POPULATION
+
+spa_pop <- get_pop('Spain')
+ger_pop <- get_pop('Germany')
+pol_pop <- get_pop('Poland')
+fra_pop <- get_pop('France')
+ita_pop <- get_pop('Italy')
+
+eu_pop <- spa_pop + ger_pop + fra_pop + ita_pop
+chn_pop <- get_pop('China')
+
+normalize <- function(x, na.rm = TRUE) {
+  return((x- min(x)) /(max(x)-min(x)))
+}
+
+co2 <- ts(normalize(chn_co2))
+gdp <- ts(normalize(chn_gdp))
+pop <- ts(normalize(chn_pop))
 #co2_train <- ts(co2[1:25])
 #co2_test <- ts(co2[25:32])
 gdp_train <- ts(gdp[1:32])
@@ -268,7 +299,7 @@ pop_test <- ts(pop[32:40])
 
 l1 <- tslm(co2~trend)
 # plot the fitted model
-plot(co2)
+plot(co2, ylim=c(min(co2, l1$fitted.values), max(co2, l1$fitted.values)))
 lines(l1$fitted.values,col=2)
 # plot forecast
 plot(forecast(l1,h=7))
@@ -314,19 +345,35 @@ tsdisplay(resl3, lag.max=25)
 # rmse
 
 
+l4 <- tslm(co2~gdp_train+pop_train)
+# plot the fitted model
+plot(l4$fitted.values,col=2)
+lines(co2)
+# plot the forecast
+test_l4 <- list(gdp_train=gdp_test, pop_train=pop_test)
+plot(forecast(l4,newdata=as.data.frame(test_l4)))
+# summary
+summary(l4)
+AIC(l4)
+dwtest(l4) # BEST
+# residuals
+resl4 <- residuals(l4)
+tsdisplay(resl4, lag.max=25)
+
 ## BASS MODELS ##
 
 ###we estimate a simple Bass Model 
-acf(chn_co2)
-bm_cass<-BM(chn_co2,display = T)
+tsdisplay(co2, lag.max=10)
+bm_cass<-BM(co2,display = T)
 summary(bm_cass)
 
 ###prediction (out-of-sample)
-pred_bmcas<- predict(bm_cass, newx=c(1:50))
+pred_bmcas<- predict(bm_cass, newx=c(1:41))
 pred.instcas<- make.instantaneous(pred_bmcas)
 
 ###plot of fitted model 
-plot(chn_co2, type= "b",xlab="Year", ylab="Annual sales",  pch=16, lty=3, xaxt="n", cex=0.6)
+plot(co2, type= "b",xlab="Year", ylab="Emissions, tons",  pch=16, lty=3, 
+     xaxt="n", cex=0.6, xlim=c(0, 41))
 lines(pred.instcas, lwd=2, col=2)
 
 ###we estimate the model with 50% of the data
