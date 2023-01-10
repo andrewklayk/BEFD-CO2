@@ -306,7 +306,7 @@ gdp <- ts(usa_gdp)
 pop <- ts(usa_pop)
 r.train <- 1:25
 r.test <- 26:32
-r.forecast <- 33:40
+r.forecast <- 33:41
 
 co2_train <- ts(co2[r.train])
 co2_test <- ts(co2[r.test])
@@ -314,13 +314,16 @@ co2_test <- ts(co2[r.test])
 gdp_train <- ts(gdp[r.train])
 gdp_test <- ts(gdp[r.test])
 gdp_fut <- ts(gdp[r.forecast])
+gdp_real <- c(gdp_train, gdp_test)
+
 
 pop_train <- ts(pop[r.train])
 pop_test <- ts(pop[r.test])
 pop_fut <- ts(pop[r.forecast])
+pop_real <- c(pop_train, pop_test)
 
-train <- data.frame(y=co2_train, g=gdp_train, p=pop_train)
-test <- data.frame(y=co2_test, g=gdp_test, p=pop_test)
+train <- data.frame(y=co2_train, g=gdp_train, p=pop_train, tt=r.train)
+test <- data.frame(y=co2_test, g=gdp_test, p=pop_test, tt=r.test)
 
 l <- tslm(y~trend,data=train)
 # plot the fitted model on train + test
@@ -368,7 +371,7 @@ abline(v=head(r.test,1),lty=3,col='red')
 summary(l)
 AIC(l)
 dwtest(l)
-# residuals\
+# residuals
 tsdisplay(residuals(l),lag.max=25)
 # mae
 mae(c(f$mean),c(co2_test))
@@ -475,62 +478,82 @@ fit_GGMtw_inst<- make.instantaneous(fit_GGMtw)
 #################################
 library(gam)
 
-tt <- (1:length(co2))
-g1 <- gam(co2~lo(tt))
-# plot forecast
-test_g1 <- list(tt=1:41)
-plot(predict(g1, newdata=test_g1),col='blue',type='l',
-     ylim=c(min(co2, g1$fitted.values), max(co2, g1$fitted.values)))
-lines(co2)
+g <- gam(y~lo(tt), data=train,
+         control=gam.control(maxit=200,bf.maxit=200))
+# plot model on train + test
+preds <- predict(g, newdata=test)
+plot(g$fitted.values,col='blue',type='l', xlim=c(1,32),
+     ylim=c(min(co2, g$fitted.values, preds), max(co2, g$fitted.values, preds)))
+lines(x=r.test,preds,col='blue')
+lines(co2_train,type='b')
+lines(x=r.test,co2_test,type='b')
+abline(v=head(r.test,1),col='red',lty=3)
 # residuals
-plot(g1,se=T)
-tsdisplay(residuals(g1),lag.max=25)
+par(mfrow=c(1,1))
+plot(g,se=T,residuals=T)
+tsdisplay(residuals(g),lag.max=25)
 # summary
-summary(g1)
+summary(g)
 # rmse
+mae(co2_test,preds)
 
-g2 <- gam(co2~lo(tt)+lo(gdp_train),
-          control=gam.control(maxit=200,bf.maxit=200))
-# plot forecast
-test_g2 <- list(tt=1:41, gdp_train=gdp)
-plot(predict(g2, newdata=test_g2),col='blue',type='l'
-     , ylim=c(min(co2, g2$fitted.values), max(co2, g2$fitted.values)))
-points(co2)
+g <- gam(y~lo(tt)+lo(g), data=train,
+         control=gam.control(maxit=200,bf.maxit=200))
+# plot model on train + test
+preds <- predict(g, newdata=test)
+plot(g$fitted.values,col='blue',type='l', xlim=c(1,32),
+     ylim=c(min(co2, g$fitted.values, preds), max(co2, g$fitted.values, preds)))
+lines(x=r.test,preds,col='blue')
+lines(co2_train,type='b')
+lines(x=r.test,co2_test,type='b')
+abline(v=head(r.test,1),col='red',lty=3)
 # residuals
 par(mfrow=c(2,1))
-plot(g2,se=T)
-tsdisplay(residuals(g2),lag.max=25)
+plot(g,se=T,residuals=T)
+tsdisplay(residuals(g),lag.max=25)
 # summary
-summary(g2)
+summary(g)
+# rmse
+mae(co2_test,preds)
 
-g3 <- gam(co2~lo(tt)+lo(gdp_train)+lo(pop_train),
-          control=gam.control(maxit=500,bf.maxit=500))
-# plot forecast
-test_g3 <- list(tt=1:41, gdp_train=gdp, pop_train=pop)
-preds <- predict(g3, newdata=test_g3)
-plot(preds,col='blue',type='l'
-     , ylim=c(min(co2, preds), max(co2, preds)))
-points(co2)
-# residuals
-par(mfrow=c(2,1))
-plot(g3,se=T)
-tsdisplay(residuals(g3),lag.max=25)
-# summary
-summary(g3)
-
-
-g4 <- gam(co2~lo(gdp_train)+lo(pop_train),
-          control=gam.control(maxit=500,bf.maxit=500))
-# plot forecast
-test_g4 <- list(gdp_train=gdp, pop_train=pop)
-plot(predict(g4, newdata=test_g4),col='blue',type='l')
-lines(co2)
+g <- gam(y~lo(tt)+lo(g)+lo(p), data=train,
+         control=gam.control(maxit=200,bf.maxit=200))
+# plot model on train + test
+preds <- predict(g, newdata=test)
+plot(g$fitted.values,col='blue',type='l', xlim=c(1,32),
+     ylim=c(min(co2, g$fitted.values, preds), max(co2, g$fitted.values, preds)))
+lines(x=r.test,preds,col='blue')
+lines(co2_train,type='b')
+lines(x=r.test,co2_test,type='b')
+abline(v=head(r.test,1),col='red',lty=3)
 # residuals
 par(mfrow=c(3,1))
-plot(g4,se=T)
-tsdisplay(residuals(g4),lag.max=25)
+plot(g,se=T,residuals=T)
+tsdisplay(residuals(g),lag.max=25)
 # summary
-summary(g4)
+summary(g)
+# rmse
+mae(co2_test,preds)
+
+
+g <- gam(y~lo(g)+lo(p), data=train,
+         control=gam.control(maxit=500,bf.maxit=500))
+# plot model on train + test
+preds <- predict(g, newdata=test)
+plot(g$fitted.values,col='blue',type='l', xlim=c(1,32),
+     ylim=c(min(co2, g$fitted.values, preds), max(co2, g$fitted.values, preds)))
+lines(x=r.test,preds,col='blue')
+lines(co2_train,type='b')
+lines(x=r.test,co2_test,type='b')
+abline(v=head(r.test,1),col='red',lty=3)
+# residuals
+par(mfrow=c(2,1))
+plot(g,se=T,residuals=T)
+tsdisplay(residuals(g),lag.max=25)
+# summary
+summary(g)
+# rmse
+mae(co2_test,preds)
 
 
 
@@ -539,113 +562,60 @@ summary(g4)
 ###### Gradient Boosting #######
 ################################
 # Set train and test
-set.seed(1)
 
-train = sample(1:length(co2), 0.7*length(co2))
-co2_train = co2[train]
-co2_test = co2[-train]
-
-dataset_gdp <- CHN_gdp
-gdp_train=dataset_gdp[train ,]
-gdp_test=dataset_gdp[-train ,]
-
-dataset_pop <- total.pop[
-  total.pop$Year >= 1990 & total.pop$Entity=='China',
-  ]$Population..historical.estimates.
-pop_train=dataset_pop[train]
-pop_test=dataset_pop[-train]
-
+train.mask = sample(1:length(co2), 0.7*length(co2))
+co2_train = co2[train.mask]
+co2_test = co2[-train.mask]
+gdp_train=gdp_real[train.mask]
+gdp_test=gdp_real[-train.mask]
+pop_train=pop_real[train.mask]
+pop_test=pop_real[-train.mask]
 years <- 1990:2021
-years_train=years[train]
-years_test = years[-train]
+years_train = years[train.mask]
+years_test = years[-train.mask]
 
-data_train <- list(
-  Year=years_train, CO2=deu_co2_train, Pop=pop_train, GDP=gdp_train$gdp
+data_train <- data.frame(
+  YR=years_train, CO2=co2_train, POP=pop_train, GDP=gdp_train
 )
-data_test <- list(
-  Year=years_test, CO2=deu_co2_test, Pop=pop_test, GDP=gdp_test$gdp
+data_test <- data.frame(
+  YR=years_test, CO2=co2_test, POP=pop_test, GDP=gdp_test
 )
-
-# 1 Boosting
-tt <- 1:length(deu_co2_train)
-boost.CO2 = gbm(CO2 ~ Year,
-                data=data_train,
-                distribution="gaussian", n.trees=500,
-                interaction.depth=1, bag.fraction = 2)
-
-# plot training error
-plot(boost.CO2$train.error, type="l", ylab="training error")
-# predict and get test error
-yhat.boost=predict(boost.CO2, newdata=data_test, n.trees=1:500)
-err = apply(yhat.boost, 2, 
-            function(pred) mean((data_test$CO2 - pred)^2))
-
-# error comparison (train and test)
-plot(boost.CO2$train.error, type="l",
-     ylim=c(min(c(boost.CO2$train.error, err)),max(c(boost.CO2$train.error, err))))
-lines(err, type='l', col=2)
-best=which.min(err)
-abline(h=min(err),lty=2, col=4)
-abline(v=best, lty=2, col=4)
-min(err) #0.09 / 0.21
 
 # 2 Boosting - Deeper trees
-boost.CO2 = gbm(CO2 ~ Year + Pop + GDP,
-                data=data_train,
+boost.CO2 = gbm(CO2 ~ YR + GDP+POP,
+                data=rbind(data_train, data_test),
                 distribution="gaussian", n.trees=500,
-                interaction.depth=4, bag.fraction = 2)
-
-# predict and get test error
-yhat.boost=predict(boost.CO2 ,newdata=data_test,n.trees=1:500)
-err = apply(yhat.boost,2,function(pred) mean((deu_co2_test$CO2_emissions-pred)^2))
+                interaction.depth=1, shrinkage=0.1225, bag.fraction=2,
+                train.fraction=1,cv.folds=32)
 # error comparison
 plot(boost.CO2$train.error, type="l",
-     ylim=c(min(c(boost.CO2$train.error, err)),max(c(boost.CO2$train.error, err))))
-lines(err, type="l", col=2)
-best=which.min(err)
+     ylim=c(min(c(boost.CO2$train.error, boost.CO2$cv.error)),
+            max(c(boost.CO2$train.error, boost.CO2$cv.error))))
+lines(boost.CO2$cv.error, type='l',col='red')
+min(boost.CO2$cv.error)
+#lines(err, type="l", col=2)
+best=which.min(boost.CO2$cv.error)
 abline(v=best, lty=2, col=4)
-abline(h=min(err), lty=2, col=4)
-min(err) #0.08 / 0.2
+abline(h=min(boost.CO2$cv.error), lty=2, col=4)
 
-
-# 3 Boosting - Smaller learning rate 
-boost.CO2 = gbm(CO2_emissions ~ Year, data=deu_co2_train, 
-                distribution="gaussian", n.trees=500,
-                interaction.depth=1, shrinkage=0.01, bag.fraction = 2)
-# predict and get test error
-yhat.boost=predict(boost.CO2 ,newdata=deu_co2_test,n.trees=1:500)
-err = apply(yhat.boost,2, function(pred) mean((deu_co2_test$CO2_emissions-pred)^2))
-
-# error comparison
-plot(boost.CO2$train.error, type="l",ylim=c(0:1))
-lines(err, type="l", col=2)
-best=which.min(err)
-abline(v=best, lty=2, col=4)
-abline(h=min(err), lty=2, col=4)
-min(err) # 0.09/ 0.22
-
-# 4 Boosting - combination of previous models
-boost.CO2 = gbm(CO2_emissions ~ Year ,data=deu_co2_train, 
-                distribution="gaussian",n.trees=500, interaction.depth=4, shrinkage=0.01, bag.fraction = 2)
-
-# predict and get test error
-yhat.boost=predict(boost.CO2 ,newdata=deu_co2_test,n.trees=1:500)
-err = apply(yhat.boost,2, function(pred) mean((deu_co2_test$CO2_emissions-pred)^2))
-
-# error comparison
-plot(boost.CO2$train.error, type="l",ylim=c(0:1))
-lines(err, type="l", col=2)
-best=which.min(err)
-abline(v=best, lty=2, col=4)
-abline(h=min(err), lty=2, col=4)
-min(err) # 0.08 / 0.2
+p <- plot(boost.CO2, n.trees=best,return.grid = TRUE)
+plot(x=data_train$YR, y=data_train$CO2,xlim=c(1990,2030))
+points(x=data_test$YR, y=data_test$CO2)
+lines(p,type='l',col='blue')
+print(boost.CO2)
+barplot(relative.influence(boost.CO2, n.trees = best))
 
 # plot boost forecast
 
-future.preds <- predict(boost.CO2, newdata=list(Year=2021:2030), n.trees=1:500)
+data_future <- data.frame(
+  YR=2022:2030, POP=pop_fut, GDP=gdp_fut
+)
+
+future.preds <- predict(boost.CO2, newdata=data_future, n.trees=best)
+lines(x=data_future$YR, future.preds)
 
 end.year <- 2030
-plot(x=years_train, y=deu_co2_train,
+plot(x=data_train, y=deu_co2_train,
      xlim=c(1990, end.year))
 for(i in 1:length(years)){
   yr <- years[i]
