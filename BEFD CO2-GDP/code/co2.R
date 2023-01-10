@@ -236,6 +236,10 @@ sarima.for(dat_ts, n.ahead = 10, 1, 1, 1)
 ###### Linear Regression #######
 ################################
 
+total.co2 <- read.csv('../datasets/co2_by_country.csv')
+total.pop <- read.csv('../datasets/un_population.csv')
+total.gdp <- read.csv('../datasets/gdp.csv')
+
 get_pop <- function(ctry){
   dataset_pop <- c()
   dataset_pop[1:32] <- total.pop[
@@ -246,6 +250,13 @@ get_pop <- function(ctry){
   ]$Population...Sex..all...Age..all...Variant..medium
   
   return(dataset_pop)
+}
+
+mae <- function(y, yhat){
+  return(mean(abs(y - yhat)))
+}
+normalize <- function(x, min, max){
+  return((x - min)/(max-min))
 }
 
 # GET CO2
@@ -259,6 +270,8 @@ ita_co2 <- total.co2[total.co2$Entity == 'Italy' & total.co2$Year >= 1990,]$Annu
 eu_co2 <- spa_co2 + ger_co2 + fra_co2 + ita_co2
 chn_co2 <- total.co2[
   total.co2$Entity == 'China' & total.co2$Year >= 1990,]$Annual.CO..emissions
+usa_co2 <- total.co2[
+  total.co2$Entity == 'United States' & total.co2$Year >= 1990,]$Annual.CO..emissions
 
 # GET GDP
 
@@ -271,6 +284,8 @@ ita_gdp <- total.gdp[total.gdp$LOCATION == 'ITA' & total.gdp$TIME >= 1990 & tota
 eu_gdp <- ger_gdp + ita_gdp + fra_gdp + spa_gdp
 chn_gdp <- total.gdp[
   total.gdp$LOCATION == 'CHN' & total.gdp$TIME <= 2030,]$Value
+usa_gdp <- total.gdp[
+  total.gdp$LOCATION == 'USA' & total.gdp$TIME <= 2030,]$Value
 
 # GET POPULATION
 
@@ -282,83 +297,98 @@ ita_pop <- get_pop('Italy')
 
 eu_pop <- spa_pop + ger_pop + fra_pop + ita_pop
 chn_pop <- get_pop('China')
+usa_pop <- get_pop("United States")
 
-normalize <- function(x, na.rm = TRUE) {
-  return((x- min(x)) /(max(x)-min(x)))
-}
+label <- 'USA CO2 EMISSIONS, Tons'
 
-co2 <- ts(normalize(chn_co2))
-gdp <- ts(normalize(chn_gdp))
-pop <- ts(normalize(chn_pop))
-#co2_train <- ts(co2[1:25])
-#co2_test <- ts(co2[25:32])
-gdp_train <- ts(gdp[1:32])
-gdp_test <- ts(gdp[32:40])
-pop_train <- ts(pop[1:32])
-pop_test <- ts(pop[32:40])
+co2 <- ts(usa_co2)
+gdp <- ts(usa_gdp)
+pop <- ts(usa_pop)
+r.train <- 1:25
+r.test <- 26:32
+r.forecast <- 33:40
 
-l1 <- tslm(co2~trend)
-# plot the fitted model
-plot(co2, ylim=c(min(co2, l1$fitted.values), max(co2, l1$fitted.values)))
-lines(l1$fitted.values,col=2)
-# plot forecast
-plot(forecast(l1,h=7))
+co2_train <- ts(co2[r.train])
+co2_test <- ts(co2[r.test])
+
+gdp_train <- ts(gdp[r.train])
+gdp_test <- ts(gdp[r.test])
+gdp_fut <- ts(gdp[r.forecast])
+
+pop_train <- ts(pop[r.train])
+pop_test <- ts(pop[r.test])
+pop_fut <- ts(pop[r.forecast])
+
+train <- data.frame(y=co2_train, g=gdp_train, p=pop_train)
+test <- data.frame(y=co2_test, g=gdp_test, p=pop_test)
+
+l <- tslm(y~trend,data=train)
+# plot the fitted model on train + test
+f<-forecast(l,h=length(co2_test))
+plot(f, type='p',
+     ylim=c(min(f$lower, co2_train, co2_test), max(f$upper, co2_train, co2_test)))
+points(x=r.test, y=co2_test, type='p')
+lines(x=r.train, y=l$fitted.values,col='blue')
+abline(v=head(r.test,1),lty=3,col='red')
 # summary
-summary(l1)
-AIC(l1)
-dwtest(l1)
+summary(l)
+AIC(l)
+dwtest(l)
 # residuals
-resl1 <- residuals(l1)
-tsdisplay(resl1,lag.max=25)
-# rmse
+tsdisplay(residuals(l),lag.max=25)
+# mae
+mae(c(f$mean),c(co2_test))
 
-l2 <- tslm(co2~trend+gdp_train)
-# plot the fitted model
-plot(l2$fitted.values,col=2)
-lines(co2)
-# plot the forecast
-test_l2 <- list(gdp_train=gdp[32:40])
-plot(forecast(l2,newdata=as.data.frame(test_l2)))
+l <- tslm(y~trend+g,data=train)
+# plot the fitted model on train + test
+f<-forecast(l,newdata=test)
+plot(f, type='p',
+     ylim=c(min(f$lower, co2_train, co2_test), max(f$upper, co2_train, co2_test)))
+points(x=r.test, y=co2_test, type='p')
+lines(x=r.train, y=l$fitted.values,col='blue')
+abline(v=head(r.test,1),lty=3,col='red')
 # summary
-summary(l2)
-AIC(l2)
-dwtest(l2)
-# residuals
-resl2 <- residuals(l2)
-tsdisplay(resl2, lag.max=25)
-# rmse
+summary(l)
+AIC(l)
+dwtest(l)
+# residuals\
+tsdisplay(residuals(l),lag.max=25)
+# mae
+mae(c(f$mean),c(co2_test))
 
-l3 <- tslm(co2~trend+gdp_train+pop_train)
-# plot the fitted model
-plot(l3$fitted.values,col=2)
-lines(co2)
-# plot the forecast
-test_l3 <- list(gdp_train=gdp_test, pop_train=pop_test)
-plot(forecast(l3,newdata=as.data.frame(test_l3)))
+l <- tslm(y~trend+g+p,data=train)
+# plot the fitted model on train + test
+f<-forecast(l,newdata=test)
+plot(f, type='p',
+     ylim=c(min(f$lower, co2_train, co2_test), max(f$upper, co2_train, co2_test)))
+points(x=r.test, y=co2_test, type='p')
+lines(x=r.train, y=l$fitted.values,col='blue')
+abline(v=head(r.test,1),lty=3,col='red')
 # summary
-summary(l3)
-AIC(l3)
-dwtest(l3) # BEST
-# residuals
-resl3 <- residuals(l3)
-tsdisplay(resl3, lag.max=25)
-# rmse
+summary(l)
+AIC(l)
+dwtest(l)
+# residuals\
+tsdisplay(residuals(l),lag.max=25)
+# mae
+mae(c(f$mean),c(co2_test))
 
-
-l4 <- tslm(co2~gdp_train+pop_train)
-# plot the fitted model
-plot(l4$fitted.values,col=2)
-lines(co2)
-# plot the forecast
-test_l4 <- list(gdp_train=gdp_test, pop_train=pop_test)
-plot(forecast(l4,newdata=as.data.frame(test_l4)))
+l <- tslm(y~g+p,data=train)
+# plot the fitted model on train + test
+f<-forecast(l,newdata=test)
+plot(f, type='p',
+     ylim=c(min(f$lower, co2_train, co2_test), max(f$upper, co2_train, co2_test)))
+points(x=r.test, y=co2_test, type='p')
+lines(x=r.train, y=l$fitted.values,col='blue')
+abline(v=head(r.test,1),lty=3,col='red')
 # summary
-summary(l4)
-AIC(l4)
-dwtest(l4) # BEST
-# residuals
-resl4 <- residuals(l4)
-tsdisplay(resl4, lag.max=25)
+summary(l)
+AIC(l)
+dwtest(l)
+# residuals\
+tsdisplay(residuals(l),lag.max=25)
+# mae
+mae(c(f$mean),c(co2_test))
 
 ## BASS MODELS ##
 
@@ -449,7 +479,8 @@ tt <- (1:length(co2))
 g1 <- gam(co2~lo(tt))
 # plot forecast
 test_g1 <- list(tt=1:41)
-plot(predict(g1, newdata=test_g1),col='blue',type='l')
+plot(predict(g1, newdata=test_g1),col='blue',type='l',
+     ylim=c(min(co2, g1$fitted.values), max(co2, g1$fitted.values)))
 lines(co2)
 # residuals
 plot(g1,se=T)
@@ -462,8 +493,9 @@ g2 <- gam(co2~lo(tt)+lo(gdp_train),
           control=gam.control(maxit=200,bf.maxit=200))
 # plot forecast
 test_g2 <- list(tt=1:41, gdp_train=gdp)
-plot(predict(g2, newdata=test_g2),col='blue',type='l')
-lines(co2)
+plot(predict(g2, newdata=test_g2),col='blue',type='l'
+     , ylim=c(min(co2, g2$fitted.values), max(co2, g2$fitted.values)))
+points(co2)
 # residuals
 par(mfrow=c(2,1))
 plot(g2,se=T)
@@ -475,10 +507,12 @@ g3 <- gam(co2~lo(tt)+lo(gdp_train)+lo(pop_train),
           control=gam.control(maxit=500,bf.maxit=500))
 # plot forecast
 test_g3 <- list(tt=1:41, gdp_train=gdp, pop_train=pop)
-plot(predict(g3, newdata=test_g3),col='blue',type='l')
-lines(co2)
+preds <- predict(g3, newdata=test_g3)
+plot(preds,col='blue',type='l'
+     , ylim=c(min(co2, preds), max(co2, preds)))
+points(co2)
 # residuals
-par(mfrow=c(3,1))
+par(mfrow=c(2,1))
 plot(g3,se=T)
 tsdisplay(residuals(g3),lag.max=25)
 # summary
@@ -507,12 +541,9 @@ summary(g4)
 # Set train and test
 set.seed(1)
 
-dataset_co2 <- total.co2[
-  total.co2$Year >= 1990 & total.co2$Entity=='China',
-]$Annual.CO..emissions
-train = sample (1:length(dataset_co2), 0.7*length(dataset_co2))
-deu_co2_train=dataset_co2[train]
-deu_co2_test=dataset_co2[-train]
+train = sample(1:length(co2), 0.7*length(co2))
+co2_train = co2[train]
+co2_test = co2[-train]
 
 dataset_gdp <- CHN_gdp
 gdp_train=dataset_gdp[train ,]
